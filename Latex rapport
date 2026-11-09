@@ -1,0 +1,909 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+]{article}
+\usepackage{xcolor}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\usepackage{newunicodechar}
+\newunicodechar{≈}{\ensuremath{\approx}}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{longtable,booktabs,array}
+\newcounter{none} % for unnumbered tables
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\textbf{PROJET F3 · RAPPORT}
+
+\textbf{Prévision de l\textquotesingle inflation américaine à 12 mois}
+
+Référence naïve, régression Ridge et gradient boosting
+
+\emph{Le chômage et le taux directeur aident-ils à prévoir
+l\textquotesingle inflation un an à l\textquotesingle avance ?}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.2698}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.7302}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Réalisé par}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+LAILA YABAHDDOU - IKRAM TAHIR
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Encadrant(e)}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Pr. Larhlimi
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Module}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Bases de données et data science
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Date de remise}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+10 novembre 2026
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\end{longtable}
+}
+
+\section{1. Objectif}\label{objectif}
+
+Le taux de chômage et le taux directeur de la Réserve fédérale
+permettent-ils de prévoir l\textquotesingle inflation américaine à 12
+mois mieux qu\textquotesingle une règle simple ? Trois approches sont
+comparées sur une même période de test :
+
+\begin{itemize}
+\item
+  \textbf{Référence} : l\textquotesingle inflation dans 12 mois sera
+  égale à celle d\textquotesingle aujourd\textquotesingle hui ;
+\item
+  \textbf{Ridge} : régression linéaire régularisée ;
+\item
+  \textbf{Gradient boosting} : ensemble d\textquotesingle arbres non
+  linéaire.
+\end{itemize}
+
+Critère de lecture : la RMSE à 12 mois. Un modèle qui ne bat pas la
+référence ne démontre rien.
+
+\section{2. Données et variables}\label{donnuxe9es-et-variables}
+
+Trois séries mensuelles FRED (Réserve fédérale de Saint-Louis),
+fusionnées par la date et restreintes à partir de janvier 1960. Les
+valeurs manquantes sont interpolées ; les lignes encore incomplètes sont
+supprimées.
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2386}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.4046}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3567}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Série}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Contenu}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Rôle}
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+CPIAUCSL
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Indice des prix à la consommation (désaisonnalisé)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Calcul de l\textquotesingle inflation (cible)
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+UNRATE
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Taux de chômage (\%)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Variable explicative
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+FEDFUNDS
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Taux directeur effectif (\%)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Variable explicative
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\end{longtable}
+}
+
+\textbf{Cible} : inflation annuelle (variation de
+l\textquotesingle indice sur 12 mois) observée en t + 12. \textbf{9
+variables explicatives}, toutes calculées à partir du passé et du
+présent :
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.3113}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.6887}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Famille}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Variables}
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Inflation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+inflation, moyenne mobile sur 12 mois, inflation 12 mois plus tôt
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Chômage
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+UNRATE, valeur 3 mois plus tôt, variation sur 12 mois
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Taux directeur
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+FEDFUNDS, valeur 3 mois plus tôt, variation sur 12 mois
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\end{longtable}
+}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.3424}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.6576}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Élément}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Résultat du notebook}
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Période couverte (CPIAUCSL)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Janvier 1960 à septembre 2026 : 801 mois
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Valeurs manquantes
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+CPIAUCSL : 1 dans le fichier brut (957 lignes, 956 renseignées),
+interpolée par la méthode temporelle
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Après calcul de l\textquotesingle inflation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+789 lignes (à partir de janvier 1961)
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Jeu final (X)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+754 observations × 9 variables, de janvier 1963 à octobre 2025
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\end{longtable}
+}
+
+\section{3. Analyse exploratoire}\label{analyse-exploratoire}
+
+L\textquotesingle inflation américaine suit trois phases : forte et
+volatile dans les années 1970 et au début des années 1980, basse et
+stable de la fin des années 1980 à 2020, puis remontée marquée dans les
+années 2020. La distribution change nettement d\textquotesingle une
+décennie à l\textquotesingle autre :
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2075}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1971}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1971}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1991}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1991}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Décennie}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Moyenne (\%)}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Écart-type}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Minimum}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Maximum}
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+1960
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+2,60
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+1,52
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+0,67
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+5,93
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+1970
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+7,09
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+2,71
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+2,95
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+13,25
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+1980
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+5,56
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+3,53
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+1,19
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+14,59
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+1990
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+3,01
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+1,13
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+1,38
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+6,38
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+2000
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+2,57
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+1,42
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+−1,96
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+5,50
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+2010
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+1,77
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+0,86
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+−0,23
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+3,81
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+2020
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+3,89
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+2,22
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+0,20
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+8,98
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\end{longtable}
+}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.3113}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.6887}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Élément}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Observation}
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Pics d\textquotesingle inflation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Maximum historique : 14,59 \% en mars 1980. Les 10 plus fortes valeurs
+vont de 12,77 \% à 14,59 \%, de décembre 1979 à septembre 1980. Pic
+récent : 8,98 \% (années 2020, vers 2022 sur le graphique).
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Corrélations avec l\textquotesingle inflation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Inflation 12 mois plus tôt : 0,73. FEDFUNDS : 0,70. UNRATE : 0,08.
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Chômage décalé (0 à 24 mois)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Corrélation faible et positive à tous les décalages (de 0,02 à 0,08).
+Maximum à 0 mois (0,076), minimum vers 8 mois (≈ 0,025), nouvelle hausse
+vers 23 mois (≈ 0,068).
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Taux directeur et inflation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Les deux courbes montent ensemble dans les années 1970 et 1980, le taux
+culminant après l\textquotesingle inflation (1981). En 2020-2021 le taux
+reste proche de zéro alors que l\textquotesingle inflation grimpe ; il
+ne remonte qu\textquotesingle en 2022, après elle.
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Décomposition de l\textquotesingle indice
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Tendance croissante régulière ; saisonnalité négligeable (amplitude
+d\textquotesingle environ ±0,05 \%, l\textquotesingle indice étant déjà
+désaisonnalisé) ; résidu proche de 1.
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\end{longtable}
+}
+
+\textbf{Lecture} : le lien entre chômage et inflation est quasi nul, et
+la forte corrélation avec le taux directeur est simultanée : le taux
+réagit à l\textquotesingle inflation plutôt qu\textquotesingle il ne la
+précède.
+
+\includegraphics[width=5.83333in,height=2.19792in]{./media/image1.png}
+
+\emph{Figure 1 -- Inflation annuelle et moyenne mobile sur 12 mois}
+
+\includegraphics[width=5.83333in,height=2.03125in]{./media/image2.png}
+
+\emph{Figure 2 -- Inflation (rouge, axe gauche) et taux directeur (bleu,
+axe droit)}
+
+\section{4. Méthode}\label{muxe9thode}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.2594}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.7406}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Étape}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Choix retenu}
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Découpage
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Chronologique, sans mélange aléatoire (évite la fuite temporelle).
+\textbf{Entraînement} : janvier 1963 à décembre 2014, 624 mois.
+\textbf{Zone tampon} : 2015, 12 mois (la cible se situe 12 mois plus
+tard). \textbf{Test} : dates de prévision de janvier 2016 à octobre
+2025, 118 mois, utilisés une seule fois.
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Ridge
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Variables standardisées ; alpha parmi 0,01 -- 0,1 -- 1 -- 10 -- 100 -- 1
+000.
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Gradient boosting
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+100 ou 300 arbres ; profondeur 2 ou 3 ; taux
+d\textquotesingle apprentissage 0,03 ou 0,1 ; sous-échantillonnage 0,8.
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Hyperparamètres
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Validation croisée chronologique (TimeSeriesSplit, 5 plis, intervalle de
+12 mois), minimisation de la RMSE.
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Métriques
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+RMSE (principale), MAE (contrôle). Gain = (1 − RMSE modèle / RMSE
+référence) × 100 ; positif = meilleur que la référence.
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\end{longtable}
+}
+
+\section{5. Résultats}\label{ruxe9sultats}
+
+\subsection{5.1 Jeu de test complet (118
+mois)}\label{jeu-de-test-complet-118-mois}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2594}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1349}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1349}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1971}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2737}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Modèle}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{RMSE}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{MAE}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Gain RMSE (\%)}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Hyperparamètres retenus}
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Référence (dernière valeur)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+2,366
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+1,658
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+0
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Sans objet
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Ridge
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+2,972
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+1,966
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+−25,6
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+alpha = 0,01
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Gradient boosting
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+2,960
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+2,039
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+−25,1
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+100 arbres, profondeur 2, taux 0,03, sous-éch. 0,8
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\end{longtable}
+}
+
+\subsection{5.2 Avant et après 2020}\label{avant-et-apruxe8s-2020}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2945}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1764}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1764}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1764}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1764}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Modèle}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{RMSE avant 2020}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{RMSE dès 2020}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Gain avant 2020 (\%)}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Gain dès 2020 (\%)}
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Référence (dernière valeur)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+0,853
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+2,990
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+0
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+0
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Ridge
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+1,269
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+3,713
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+−48,8
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+−24,2
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Gradient boosting
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+0,841
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+3,780
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
++1,4
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+−26,4
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\end{longtable}
+}
+
+Dates de prévision : 48 mois avant 2020, 70 mois depuis janvier 2020.
+
+\textbf{Lecture} : aucun modèle ne bat la référence sur
+l\textquotesingle ensemble du test. Ridge et le gradient boosting ont
+une RMSE supérieure d\textquotesingle environ 25 \% et une MAE plus
+élevée. Avant 2020, le gradient boosting est à égalité avec la référence
+(gain de 1,4 \%, écart sans portée) et Ridge est nettement moins bon.
+Depuis 2020, la référence reste la meilleure, et
+l\textquotesingle erreur de tous les modèles est multipliée par 3,5
+(référence), 2,9 (Ridge) et 4,5 (gradient boosting).
+
+\includegraphics[width=5.625in,height=2.625in]{./media/image6.png}
+
+\emph{Figure 3 -- Inflation à 12 mois : prévisions contre réel (période
+test)}
+
+\includegraphics[width=5.625in,height=2.14583in]{./media/image5.png}
+
+\emph{Figure 4 -- Erreurs de prévision (réel − prévu)}
+
+\section{6. Importance des variables}\label{importance-des-variables}
+
+Valeurs lues sur les graphiques du notebook (≈). Pour la permutation,
+une valeur positive signifie que mélanger la variable dégrade la RMSE du
+test ; une valeur négative, que la variable dégrade la prévision hors
+échantillon.
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.3009}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2335}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2335}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2322}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Variable}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Ridge : coefficient}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Gradient boosting : importance interne}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Permutation (test)}
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+inflation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
++2,05
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+0,57
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
++0,13
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+inflation\_retard\_12
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
++0,40
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+0,04
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+−0,11
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+inflation\_ma12
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+−0,22
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+0,03
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+−0,07
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+UNRATE
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+−1,62
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+0,05
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+−0,01
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+chom\_retard\_3
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
++1,47
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+0,02
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+0,00
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+chom\_var\_12
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
++0,05
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+0,03
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+−0,07
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+FEDFUNDS
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
++0,32
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+0,06
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+−0,12
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+taux\_retard\_3
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+−0,40
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+0,01
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+−0,02
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+taux\_var\_12
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
++0,60
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+0,19
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+−0,29
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\end{longtable}
+}
+
+\textbf{Réponse à la question} : seule l\textquotesingle inflation
+courante est utile hors échantillon (permutation positive). Le chômage a
+une importance de permutation nulle (UNRATE, chom\_retard\_3) et le taux
+directeur une importance négative (taux\_var\_12 et FEDFUNDS). Dans
+Ridge, UNRATE (−1,6) et chom\_retard\_3 (+1,5) se compensent presque
+(corrélation de 0,91 entre les deux). Dans le gradient boosting,
+taux\_var\_12 est la deuxième variable à l\textquotesingle entraînement
+(≈ 0,19) mais la plus nuisible sur le test : c\textquotesingle est un
+signe de surapprentissage à la période d\textquotesingle avant 2015.
+
+\includegraphics[width=4.16667in,height=2.21875in]{./media/image3.png}
+
+\emph{Figure 5 -- Importance par permutation sur le jeu de test}
+
+\section{7. Discussion}\label{discussion}
+
+\begin{itemize}
+\item
+  \textbf{Épisode de 2020-2022} : l\textquotesingle inflation de cette
+  période est liée à des chocs d\textquotesingle offre (chaînes
+  logistiques, énergie) et à la sortie de la pandémie, que ni le chômage
+  ni le taux directeur ne décrivent bien. Le taux directeur reste proche
+  de zéro pendant la montée des prix (figure 2) et le chômage connaît un
+  bond sans précédent au printemps 2020.
+\item
+  \textbf{Ridge en 2020} : sa prévision chute à environ −10 \% au
+  printemps 2020 (figure 3). Cette chute coïncide avec le bond du
+  chômage : UNRATE a un coefficient fortement négatif et la valeur
+  observée sort de la plage d\textquotesingle entraînement, que le
+  modèle linéaire extrapole mécaniquement.
+\item
+  \textbf{Gradient boosting} : prévision quasi constante autour de 2,5
+  \% avant 2020, puisqu\textquotesingle il ne sait pas extrapoler hors
+  de la plage vue à l\textquotesingle entraînement. Lors de la
+  désinflation (prévisions datées de 2022-2023), il annonce
+  jusqu\textquotesingle à environ 11 \% alors que
+  l\textquotesingle inflation réelle retombe vers 3 \%.
+\item
+  \textbf{Linéaire contre arbres} : aucun des deux ne réagit bien.
+  Depuis 2020, Ridge est à peine moins mauvais en RMSE (3,71 contre
+  3,78), mais avec une prévision aberrante en 2020 ;
+  l\textquotesingle écart n\textquotesingle est pas significatif.
+\item
+  \textbf{Portée} : les prévisions à 12 mois se chevauchent et 70 des
+  118 mois testés sont postérieurs à 2020. L\textquotesingle épisode de
+  2021-2022 domine donc la RMSE et les observations indépendantes sont
+  bien moins nombreuses que 118.
+\end{itemize}
+
+\section{8. Limites}\label{limites}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2386}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.4773}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2841}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Limite}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Explication}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\textbf{Effet probable}
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Biais d\textquotesingle anticipation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Séries FRED révisées ; un prévisionniste de l\textquotesingle époque
+n\textquotesingle avait que les premières publications.
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Performances surestimées
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Délais de publication
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Une variable du mois t n\textquotesingle est connue
+qu\textquotesingle après le début du mois suivant.
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Légère surestimation
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Date de coupure
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Fin 2014, choix de l\textquotesingle auteur.
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Classement possiblement différent
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Test court et dominé par un épisode
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+118 mois, dont 70 depuis 2020 ; prévisions chevauchantes.
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Petits écarts non significatifs
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Rupture structurelle
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Inflation moyenne de 7,09 \% dans les années 1970 contre 1,77 \% dans
+les années 2010.
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Mauvaise généralisation récente
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Grille de réglage
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Ridge retient alpha = 0,01, la plus petite valeur testée, et le gradient
+boosting la combinaison la plus simple de la grille.
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Grille peut-être trop étroite
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Peu de variables
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Ni énergie, ni anticipations, ni salaires.
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Prévision limitée par construction
+\end{minipage} \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Réglage sur le test
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Test consulté une seule fois ; ne pas modifier les modèles après coup.
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Respecté (pas de data snooping)
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\end{longtable}
+}
+
+\textbf{Pistes} : évaluation à fenêtre glissante (réentraînement annuel)
+et données en temps réel (vintages ALFRED).
+
+\section{9. Conclusion}\label{conclusion}
+
+\textbf{Résultat principal} : aucun modèle ne bat la référence «
+dernière valeur ». Sa RMSE est de 2,366 contre 2,972 pour Ridge et 2,960
+pour le gradient boosting, soit des pertes de 25,6 \% et 25,1 \%.
+
+\textbf{Réponse à la question} : sur ce découpage, le chômage et le taux
+directeur n\textquotesingle aident pas à prévoir
+l\textquotesingle inflation à 12 mois. Seule l\textquotesingle inflation
+courante apporte de l\textquotesingle information ; les variables de
+chômage ont une importance de permutation nulle, et celles du taux
+directeur, une importance négative.
+
+Ces conclusions restent à relativiser : test court, dominé par
+l\textquotesingle épisode de 2020-2022, et données révisées (biais
+d\textquotesingle anticipation).
+
+\subsection{Sources}\label{sources}
+
+FRED, Réserve fédérale de Saint-Louis : CPIAUCSL (prix à la
+consommation), UNRATE (chômage), FEDFUNDS (taux directeur). Dernière
+observation de l\textquotesingle indice des prix : septembre 2026. Date
+de consultation : 5 novembre.
+
+\end{document}
